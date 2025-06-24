@@ -39,7 +39,7 @@ def GetRecentDoubts():
     conn=GetConnection()
     cursor=conn.cursor()
     final=[]
-    cursor.execute("SELECT posted_username,question_id,title,question,question_timestamp FROM questions ORDER BY question_timestamp desc LIMIT 5")
+    cursor.execute("SELECT posted_username,question_id,title,question,question_timestamp FROM questions ORDER BY question_timestamp desc")
     lst=cursor.fetchall()
     q_id_to_tag_name_map={}
     for q_tuple in lst:
