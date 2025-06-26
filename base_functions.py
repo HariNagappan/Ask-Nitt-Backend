@@ -1,3 +1,8 @@
+from functools import wraps
+
+import jwt
+from flask import request, jsonify
+
 from db import GetConnection
 
 
@@ -114,8 +119,9 @@ def CreateTableIfNotExist():
     conn = GetConnection()
     cursor = conn.cursor()
     cursor.execute("""CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                        username TEXT UNIQUE, 
-                                                        password TEXT)""")
+                                                        username NOT NULL UNIQUE, 
+                                                        password TEXT NOT NULL,
+                                                        jwt_token TEXT)""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS questions
                       (
                           question_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,6 +154,7 @@ def CreateTableIfNotExist():
                           FOREIGN KEY (tag_id) REFERENCES tags(tag_id)
                           
                       )""")#UNIQUE (question_id, tag_id)
+    #cursor.execute("""CREATE TABLE IF NOT EXISTS allowed_users_to_see_detail""")
     conn.commit()
     cursor.execute("""SELECT COUNT(*) FROM tags""")
     val=cursor.fetchone()[0]
@@ -155,9 +162,23 @@ def CreateTableIfNotExist():
         AddTags()
     conn.close()
 
-def AddUser(username, password):
-    conn = GetConnection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
-    conn.commit()
-    conn.close()
+def requires_token(func):
+    @wraps(func)
+    def decorator(*args, **kwargs):
+        token=request.headers.get("Authorization")
+        try:
+            payload=jwt.decode(token,SECRET_KEY, algorithms=["HS256"])
+            username=payload.get("username")
+            print("from decorator,username=", username)
+        except jwt.ExpiredSignatureError:
+            return jsonify(token="", error_msg="Expired Signature")
+        except jwt.InvalidTokenError:
+            return jsonify(token="",error_msg="Invalid Token")
+        return func(username,*args, **kwargs)
+    return decorator
+
+
+
+
+SECRET_KEY="my_secret_key_123_456_&*#@%$^&!@#$%!#$!^&I#!!"
+expiry_time={"seconds":5,"minutes":0,"hours":0,"days":0}

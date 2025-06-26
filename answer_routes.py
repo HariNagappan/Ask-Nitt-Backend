@@ -1,13 +1,15 @@
+from importlib.metadata import requires
+
 from flask import Blueprint, request, jsonify
 
-from base_functions import AddUser
+from base_functions import requires_token
 from db import GetConnection
 from collections import defaultdict
 
 answers_bp=Blueprint("answer",__name__)
 
 @answers_bp.route("/answers",methods=["GET"])
-def GetAnswers():
+def GetAnswersByQuestionId():
     conn=GetConnection()
     cursor=conn.cursor()
     question_id=request.args.get("question_id")
@@ -17,7 +19,8 @@ def GetAnswers():
     return jsonify([dict(row) for row in lst])
 
 @answers_bp.route("/vote",methods=["POST"])
-def VoteAnswer():
+@requires_token
+def VoteAnswer(username):
     conn=GetConnection()
     cursor=conn.cursor()
     json=request.get_json()
@@ -30,11 +33,11 @@ def VoteAnswer():
     return jsonify({"success": True})
 
 @answers_bp.route("/post_answer",methods=["POST"])
-def PostAnswer():
+@requires_token
+def PostAnswer(answered_username):
     data=request.get_json()
     question_id=data.get("question_id")
     answer=data.get("answer")
-    answered_username=data.get("answered_username")
     conn=GetConnection()
     cursor=conn.cursor()
     cursor.execute("INSERT INTO answers(question_id,answer,answered_username) VALUES (?,?,?)",(question_id,answer,answered_username))

@@ -14,12 +14,13 @@ app.register_blueprint(answers_bp)
 if __name__ == '__main__':
     # conn=GetConnection()
     # cursor=conn.cursor()
-    #
-    #
+    # #
+    # #
     # cursor.execute("""DROP TABLE IF EXISTS question_tags""")
     # cursor.execute("""DROP TABLE IF EXISTS tags""")
     # cursor.execute("""DROP TABLE IF EXISTS answers""")
     # cursor.execute("""DROP TABLE IF EXISTS questions""")
+    # cursor.execute("""DROP TABLE IF EXISTS users""")
     # conn.commit()
     # conn.close()
     CreateTableIfNotExist()
