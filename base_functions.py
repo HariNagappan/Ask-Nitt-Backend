@@ -120,8 +120,7 @@ def CreateTableIfNotExist():
     cursor = conn.cursor()
     cursor.execute("""CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY AUTOINCREMENT,
                                                         username NOT NULL UNIQUE, 
-                                                        password TEXT NOT NULL,
-                                                        jwt_token TEXT)""")
+                                                        password TEXT NOT NULL)""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS questions
                       (
                           question_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,7 +177,5 @@ def requires_token(func):
     return decorator
 
 
-
-
 SECRET_KEY="my_secret_key_123_456_&*#@%$^&!@#$%!#$!^&I#!!"
-expiry_time={"seconds":5,"minutes":0,"hours":0,"days":0}
+expiry_time={"seconds":0,"minutes":0,"hours":0,"days":7}

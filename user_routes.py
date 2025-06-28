@@ -36,7 +36,6 @@ def Login():
     cursor.execute("SELECT * FROM users WHERE username=?", (username,))
     row = cursor.fetchone()
     print("login row:",row)
-
     if row is None:
         conn.close()
         return jsonify(token="",msg="User not found")
@@ -49,11 +48,10 @@ def Login():
                 "exp":datetime.datetime.utcnow() + datetime.timedelta(seconds=expiry_time["seconds"],minutes=expiry_time["minutes"],hours=expiry_time["hours"] ,days=expiry_time["days"]),
             }
             jwt_token=jwt.encode(payload, SECRET_KEY,algorithm="HS256")
-            cursor.execute("UPDATE users SET jwt_token =? WHERE username=?", (jwt_token,username))
-            conn.commit()
             conn.close()
             return jsonify(token=jwt_token,msg="Login Successful")
         else:
+            conn.close()
             return jsonify(token="", msg="Incorrect password")
 
 @user_bp.route("/signup",methods=["POST"])
@@ -78,23 +76,12 @@ def SignUp():
                                                                    days=expiry_time["days"]),
         }
         jwt_token=jwt.encode(payload, SECRET_KEY,algorithm="HS256")
-        cursor.execute("UPDATE users SET jwt_token=? WHERE username=?", (jwt_token,username))
         conn.commit()
         conn.close()
         return jsonify(token=jwt_token,msg="Signup Successful")
     else:
         conn.close()
         return jsonify(token="",msg="Username already exists")
-
-@user_bp.route("/logout",methods=["POST"])
-@requires_token
-def Logout(username):
-    conn=GetConnection()
-    cursor=conn.cursor()
-    cursor.execute("""UPDATE users SET jwt_token=NULL WHERE username=?""",(username,))
-    conn.commit()
-    conn.close()
-    return jsonify(token="",msg="Logout Successful")
 
 @user_bp.route("/tags",methods=["GET"])
 def GetTags():

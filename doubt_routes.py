@@ -91,3 +91,27 @@ def GetDoubtsByName():
     for q_tuple in lst:
         q_tuple["tags"]=GetTagsByQuestionId(cursor=cursor,question_id=q_tuple["question_id"])
     return jsonify(lst)
+
+@doubts_bp.route("/questions_filter",methods=["GET"])
+def GetDoubtsByFilter():
+    conn=GetConnection()
+    cursor=conn.cursor()
+    search_text=request.args.get("search_text")
+    tags=request.args.getlist("tags")
+    from_date=request.args.get("from_date")
+    to_date=request.args.get("to_date")
+    print(from_date,to_date)
+    cursor.execute("SELECT * FROM questions WHERE question LIKE ? OR title LIKE ? AND question_timestamp BETWEEN ? AND ?",(search_text+"%",search_text+"%",from_date,to_date))
+    lst=cursor.fetchall()
+    lst=list(dict(row) for row in lst)
+    print("all questions of that type",lst)
+    q_to_remove=[]
+    for q_tuple in lst:
+        actual_tags=GetTagsByQuestionId(cursor=cursor,question_id=q_tuple["question_id"])
+        print("tags",tags,"actual_tags",actual_tags,"set(tags)",set(tags),"set(actual_tags)",set(actual_tags))
+        if(len(set(tags)-set(actual_tags))==0):
+            q_tuple["tags"]=actual_tags
+        else:
+            q_to_remove.append(q_tuple)
+    lst=[q_tuple for q_tuple in lst if q_tuple not in q_to_remove]
+    return lst
