@@ -11,45 +11,32 @@ doubts_bp=Blueprint('doubts_bp', __name__)
 
 @doubts_bp.route("/user_doubts",methods=["GET"])
 def GetUserDoubts():
-    final=[]
-    q_id_map_tags=defaultdict(list)
     username=request.args.get('username')
     conn=GetConnection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT question_id FROM questions AS q WHERE q.posted_username=? ORDER BY question_id", (username,))
-    tmp=cursor.fetchall()
-    for question_tuple in tmp:
-        q_id_map_tags[question_tuple[0]]=GetTagsByQuestionId(cursor=cursor,question_id=question_tuple[0])
-    cursor.execute("SELECT title,question_id,question,question_timestamp FROM questions WHERE posted_username=? ORDER BY question_id", (username,))
-    tmp=cursor.fetchall()
-    print("GetUserDoubts: username",username)
-    for question_id in q_id_map_tags:
-        val=next(i for i in tmp if i["question_id"]==question_id)
-        print("user doubts timestamp",val["question_timestamp"])
-        final.append({
-            "posted_username": username,
-            "question_id": question_id,
-            "tags": q_id_map_tags[question_id],# if(q_id_map_tags[question_id]!=[None]) else [],
-            "question_timestamp": val["question_timestamp"],
-            "question": val["question"],
-            "title": val["title"],
-        })
-    return jsonify(final)
+    main_cursor=conn.cursor()
+    main_cursor.execute("SELECT title,question_id,question,question_timestamp FROM questions WHERE posted_username=? ORDER BY question_id",(username,))
+    lst=main_cursor.fetchall()
+    lst=list(dict(row) for row in lst)
+    for q_tuple in lst:
+        tag_cursor=conn.cursor()
+        q_tuple["posted_username"]=username
+        q_tuple["tags"] =GetTagsByQuestionId(cursor=tag_cursor,question_id=q_tuple["question_id"])
+        tag_cursor.close()
+    conn.close()
+    return jsonify(lst)
 
 @doubts_bp.route("/recent_doubts",methods=["GET"])
 def GetRecentDoubts():
     conn=GetConnection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT posted_username,question_id,title,question,question_timestamp FROM questions ORDER BY question_timestamp desc LIMIT 5")
-    lst=cursor.fetchall()
-    q_id_to_tag_name_map={}
+    main_cursor=conn.cursor()
+    main_cursor.execute("SELECT posted_username,question_id,title,question,question_timestamp FROM questions ORDER BY question_timestamp desc LIMIT 5")
+    lst=main_cursor.fetchall()
+    lst = [dict(row) for row in lst]
     for q_tuple in lst:
-        q_id_to_tag_name_map[q_tuple["question_id"]]=GetTagsByQuestionId(cursor=cursor,question_id=q_tuple["question_id"])
-    lst=[dict(row) for row in lst]
-    print("before recent doubts:",lst)
-    for item in lst:
-        item["tags"]=q_id_to_tag_name_map[item["question_id"]]# if(q_id_to_tag_name_map[item["question_id"]]!=[None]) else []
-    print("after recent doubts:",lst)
+        tag_cursor=conn.cursor()
+        q_tuple["tags"]=GetTagsByQuestionId(cursor=tag_cursor,question_id=q_tuple["question_id"])
+        tag_cursor.close()
+    conn.close()
     return jsonify(lst)
 
 @doubts_bp.route("/post_doubt",methods=["POST"])
@@ -80,18 +67,6 @@ def PostDoubt(username):
     conn.close()
     return jsonify({"success": True})
 
-@doubts_bp.route("/questions_by_name",methods=["GET"])
-def GetDoubtsByName():
-    conn=GetConnection()
-    cursor=conn.cursor()
-    question_prefix=request.args.get("question_prefix")
-    cursor.execute("SELECT question FROM questions WHERE question LIKE ? ",(question_prefix+"%",))
-    lst=cursor.fetchall()
-    lst=[dict(row) for row in lst]
-    for q_tuple in lst:
-        q_tuple["tags"]=GetTagsByQuestionId(cursor=cursor,question_id=q_tuple["question_id"])
-    return jsonify(lst)
-
 @doubts_bp.route("/questions_filter",methods=["GET"])
 def GetDoubtsByFilter():
     conn=GetConnection()
@@ -101,7 +76,7 @@ def GetDoubtsByFilter():
     from_date=request.args.get("from_date")
     to_date=request.args.get("to_date")
     print(from_date,to_date)
-    cursor.execute("SELECT * FROM questions WHERE question LIKE ? OR title LIKE ? AND question_timestamp BETWEEN ? AND ?",(search_text+"%",search_text+"%",from_date,to_date))
+    cursor.execute("SELECT * FROM questions WHERE question LIKE ? OR title LIKE ? AND question_timestamp BETWEEN ? AND ?",("%"+search_text+"%","%"+search_text+"%",from_date,to_date))
     lst=cursor.fetchall()
     lst=list(dict(row) for row in lst)
     print("all questions of that type",lst)
@@ -114,4 +89,6 @@ def GetDoubtsByFilter():
         else:
             q_to_remove.append(q_tuple)
     lst=[q_tuple for q_tuple in lst if q_tuple not in q_to_remove]
+    conn.close()
     return lst
+

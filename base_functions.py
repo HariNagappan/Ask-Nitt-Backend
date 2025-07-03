@@ -1,3 +1,4 @@
+from enum import Enum
 from functools import wraps
 
 import jwt
@@ -120,7 +121,8 @@ def CreateTableIfNotExist():
     cursor = conn.cursor()
     cursor.execute("""CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY AUTOINCREMENT,
                                                         username NOT NULL UNIQUE, 
-                                                        password TEXT NOT NULL)""")
+                                                        password TEXT NOT NULL,
+                                                        joined_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS questions
                       (
                           question_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -153,7 +155,25 @@ def CreateTableIfNotExist():
                           FOREIGN KEY (tag_id) REFERENCES tags(tag_id)
                           
                       )""")#UNIQUE (question_id, tag_id)
-    #cursor.execute("""CREATE TABLE IF NOT EXISTS allowed_users_to_see_detail""")
+
+    cursor.execute("""CREATE TABLE IF NOT EXISTS friend_requests
+                      (
+                           sender_id INTEGER NOT NULL ,
+                           reciever_id INTEGER NOT NULL ,
+                           status TEXT NOT NULL,
+                           PRIMARY KEY (sender_id, reciever_id),
+                           FOREIGN KEY (sender_id) REFERENCES users(user_id),
+                           FOREIGN KEY (reciever_id) REFERENCES users(user_id)
+                      )""")
+    cursor.execute("""CREATE TABLE IF NOT EXISTS friends
+                      (
+                          user_id   INTEGER NOT NULL,
+                          friend_id INTEGER NOT NULL,
+                          PRIMARY KEY (user_id, friend_id),
+                          FOREIGN KEY (user_id) REFERENCES users (user_id),
+                          FOREIGN KEY (friend_id) REFERENCES users (user_id)
+                      )""")
+
     conn.commit()
     cursor.execute("""SELECT COUNT(*) FROM tags""")
     val=cursor.fetchone()[0]
@@ -176,6 +196,11 @@ def requires_token(func):
         return func(username,*args, **kwargs)
     return decorator
 
+
+class FriendRequestStatus(Enum):
+    PENDING="PENDING"
+    ACCEPTED="ACCEPTED"
+    NOT_SENT="NOT_SENT"
 
 SECRET_KEY="my_secret_key_123_456_&*#@%$^&!@#$%!#$!^&I#!!"
 expiry_time={"seconds":0,"minutes":0,"hours":0,"days":7}
