@@ -3,7 +3,7 @@ from importlib.metadata import requires
 
 from flask import Blueprint, request, jsonify
 
-from base_functions import requires_token
+from base_functions import requires_token, QuestionStatus
 from db import GetConnection
 from user_routes import GetTagsByQuestionId
 
@@ -14,7 +14,7 @@ def GetUserDoubts():
     username=request.args.get('username')
     conn=GetConnection()
     main_cursor=conn.cursor()
-    main_cursor.execute("SELECT title,question_id,question,question_timestamp FROM questions WHERE posted_username=? ORDER BY question_id",(username,))
+    main_cursor.execute("SELECT title,question_id,question,question_timestamp,status FROM questions WHERE posted_username=? ORDER BY question_id",(username,))
     lst=main_cursor.fetchall()
     lst=list(dict(row) for row in lst)
     for q_tuple in lst:
@@ -29,7 +29,7 @@ def GetUserDoubts():
 def GetRecentDoubts():
     conn=GetConnection()
     main_cursor=conn.cursor()
-    main_cursor.execute("SELECT posted_username,question_id,title,question,question_timestamp FROM questions ORDER BY question_timestamp desc LIMIT 5")
+    main_cursor.execute("SELECT posted_username,question_id,title,question,question_timestamp,status FROM questions ORDER BY question_timestamp desc LIMIT 5")
     lst=main_cursor.fetchall()
     lst = [dict(row) for row in lst]
     for q_tuple in lst:
@@ -50,7 +50,7 @@ def PostDoubt(username):
 
     conn=GetConnection()
     cursor=conn.cursor()
-    cursor.execute("INSERT INTO questions(title,question,posted_username) VALUES (?,?,?)",(title,question,username))
+    cursor.execute("INSERT INTO questions(title,question,posted_username,status) VALUES (?,?,?,?)",(title,question,username,QuestionStatus.PENDING.value))
     conn.commit()
     question_id=cursor.lastrowid
     if(len(tags)>0):
@@ -75,10 +75,17 @@ def GetDoubtsByFilter():
     tags=request.args.getlist("tags")
     from_date=request.args.get("from_date")
     to_date=request.args.get("to_date")
+    status=request.args.get("status")
     print(from_date,to_date)
-    cursor.execute("SELECT * FROM questions WHERE question LIKE ? OR title LIKE ? AND question_timestamp BETWEEN ? AND ?",("%"+search_text+"%","%"+search_text+"%",from_date,to_date))
+    if(status==QuestionStatus.ANY.value):
+        print("yes any question status","search_text",search_text,"tags",tags,"from_date",from_date,"to_date",to_date)
+        cursor.execute("SELECT * FROM questions WHERE question LIKE ? OR title LIKE ? AND question_timestamp BETWEEN ? AND ?",("%"+search_text+"%","%"+search_text+"%",from_date,to_date))
+    else:
+        print("no any question status","search_text",search_text,"tags",tags,"from_date",from_date,"to_date",to_date)
+        cursor.execute("SELECT * FROM questions WHERE question LIKE ? OR title LIKE ? AND question_timestamp BETWEEN ? AND ? AND status=?",("%" + search_text + "%", "%" + search_text + "%", from_date, to_date,status))
     lst=cursor.fetchall()
     lst=list(dict(row) for row in lst)
+
     print("all questions of that type",lst)
     q_to_remove=[]
     for q_tuple in lst:
@@ -92,3 +99,14 @@ def GetDoubtsByFilter():
     conn.close()
     return lst
 
+@doubts_bp.route("/mark_doubt_solved",methods=["POST"])
+@requires_token
+def MarkDoubtSolved(username):
+    conn=GetConnection()
+    cursor=conn.cursor()
+    data=request.get_json()
+    question_id=data.get("question_id")
+    cursor.execute("UPDATE questions SET status=? WHERE question_id=?",(QuestionStatus.SOLVED.value,question_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})

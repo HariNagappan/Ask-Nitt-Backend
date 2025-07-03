@@ -129,7 +129,8 @@ def CreateTableIfNotExist():
                           title TEXT NOT NULL ,
                           question TEXT NOT NULL ,
                           posted_username TEXT NOT NULL,
-                          question_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                          question_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          status TEXT NOT NULL 
                       )""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS answers
                       (
@@ -201,6 +202,11 @@ class FriendRequestStatus(Enum):
     PENDING="PENDING"
     ACCEPTED="ACCEPTED"
     NOT_SENT="NOT_SENT"
+
+class QuestionStatus(Enum):
+    PENDING="PENDING"
+    SOLVED="SOLVED"
+    ANY="ANY"
 
 SECRET_KEY="my_secret_key_123_456_&*#@%$^&!@#$%!#$!^&I#!!"
 expiry_time={"seconds":0,"minutes":0,"hours":0,"days":7}
