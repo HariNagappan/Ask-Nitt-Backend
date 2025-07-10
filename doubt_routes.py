@@ -79,10 +79,10 @@ def GetDoubtsByFilter():
     print(from_date,to_date)
     if(status==QuestionStatus.ANY.value):
         print("yes any question status","search_text",search_text,"tags",tags,"from_date",from_date,"to_date",to_date)
-        cursor.execute("SELECT * FROM questions WHERE question LIKE ? OR title LIKE ? AND question_timestamp BETWEEN ? AND ?",("%"+search_text+"%","%"+search_text+"%",from_date,to_date))
+        cursor.execute("SELECT * FROM questions WHERE (question LIKE ? OR title) LIKE ? AND question_timestamp BETWEEN ? AND ?",("%"+search_text+"%","%"+search_text+"%",from_date,to_date))
     else:
         print("no any question status","search_text",search_text,"tags",tags,"from_date",from_date,"to_date",to_date)
-        cursor.execute("SELECT * FROM questions WHERE question LIKE ? OR title LIKE ? AND question_timestamp BETWEEN ? AND ? AND status=?",("%" + search_text + "%", "%" + search_text + "%", from_date, to_date,status))
+        cursor.execute("SELECT * FROM questions WHERE (question LIKE ? OR title LIKE ?) AND question_timestamp BETWEEN ? AND ? AND status=?",("%" + search_text + "%", "%" + search_text + "%", from_date, to_date,status))
     lst=cursor.fetchall()
     lst=list(dict(row) for row in lst)
 
@@ -90,7 +90,7 @@ def GetDoubtsByFilter():
     q_to_remove=[]
     for q_tuple in lst:
         actual_tags=GetTagsByQuestionId(cursor=cursor,question_id=q_tuple["question_id"])
-        print("tags",tags,"actual_tags",actual_tags,"set(tags)",set(tags),"set(actual_tags)",set(actual_tags))
+        #print("tags",tags,"actual_tags",actual_tags,"set(tags)",set(tags),"set(actual_tags)",set(actual_tags))
         if(len(set(tags)-set(actual_tags))==0):
             q_tuple["tags"]=actual_tags
         else:
@@ -110,3 +110,7 @@ def MarkDoubtSolved(username):
     conn.commit()
     conn.close()
     return jsonify({"success": True})
+@doubts_bp.route("/upload_files_for_doubt",methods=["POST"])
+def UploadFilesForDoubt():
+    conn=GetConnection()
+    cursor=conn.cursor()
